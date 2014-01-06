@@ -2,8 +2,8 @@
 Contributors: pomegranate
 Tags: woocommerce, export, myparcel
 Requires at least: 3.5.1
-Tested up to: 3.7.1
-Stable tag: 1.1.1
+Tested up to: 3.8
+Stable tag: 1.2.0
 License: GPLv3 or later
 License URI: http://www.opensource.org/licenses/gpl-license.php
 
@@ -47,7 +47,7 @@ In the search field type "WooCommerce MyParcel" and click Search Plugins. You ca
 
 = How do I get an API key =
 
-Send an email top info@myparcel with your account name and you will be sent all necessary information.
+Send an email to info@myparcel.nl with your account name and you will be sent all necessary information.
 
 == Screenshots ==
 
@@ -56,6 +56,11 @@ Send an email top info@myparcel with your account name and you will be sent all 
 3. View the status of the shipment on the order details page.
 
 == Changelog ==
+
+= 1.2.0 =
+* Feature: The myparcel checkout fields (street name / house number) can now also be modified on the my account page
+* Fix: WooCommerce 2.1 compatibility (checkout field localisation is now in WC core)
+* Updated MyParcel tariffs
 
 = 1.1.1 =
 * Fix: Labels for Custom id ('Eigen kenmerk') & Message ('Optioneel bericht') in the export window were reversed
