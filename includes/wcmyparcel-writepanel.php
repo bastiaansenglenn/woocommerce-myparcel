@@ -38,13 +38,15 @@ class WC_MyParcel_Writepanel {
 	 */
 	public function create_box_content() {
 		global $post_id;
+		$pdf_link = wp_nonce_url( admin_url( 'edit.php?&action=wcmyparcel-label&order_ids=' . $post_id ), 'wcmyparcel-label' );
+		$export_link = wp_nonce_url( admin_url( 'edit.php?&action=wcmyparcel&order_ids=' . $post_id ), 'wcmyparcel' );
+
 		if (get_post_meta($post_id,'_myparcel_consignment_id',true)) {
 			$consignment_id = get_post_meta($post_id,'_myparcel_consignment_id',true);
 
 			$tracktrace = get_post_meta($post_id,'_myparcel_tracktrace',true);
 			$tracktrace_url = $this->get_tracktrace_url($post_id);
 
-			$pdf_link = wp_nonce_url( admin_url( 'edit.php?&action=wcmyparcel-label&order_ids=' . $post_id ), 'wcmyparcel-label' );
 
 			// fetch TNT status
 			$tnt_status_url = 'http://www.myparcel.nl/status/tnt/' . $consignment_id;
@@ -59,7 +61,7 @@ class WC_MyParcel_Writepanel {
 				<li>Status: <?php echo $tnt_status ?></li>
 				<li>Track&Trace code: <a href="<?php echo $tracktrace_url; ?>"><?php echo $tracktrace; ?></a></li>
 				<li>
-					<a href="<?php echo wp_nonce_url( admin_url( 'edit.php?&action=wcmyparcel&order_ids=' . $post_id ), 'wcmyparcel' ); ?>" class="button one-myparcel" alt="Exporteer naar MyParcel">Exporteer opnieuw</a>
+					<a href="<?php echo $export_link; ?>" class="button myparcel one-myparcel" alt="Exporteer naar MyParcel">Exporteer opnieuw</a>
 				</li>
 			</ul>
 			<?php
@@ -67,7 +69,7 @@ class WC_MyParcel_Writepanel {
 			?>
 			<ul>
 				<li>
-					<a href="<?php echo wp_nonce_url( admin_url( 'edit.php?&action=wcmyparcel&order_ids=' . $post_id ), 'wcmyparcel' ); ?>" class="button one-myparcel" alt="Exporteer naar MyParcel">Exporteer naar MyParcel</a>
+					<a href="<?php echo $export_link; ?>" class="button myparcel one-myparcel" alt="Exporteer naar MyParcel">Exporteer naar MyParcel</a>
 				</li>
 			</ul>
 			<?php			
@@ -105,19 +107,21 @@ class WC_MyParcel_Writepanel {
 	 */
 	public function add_listing_actions( $order ) {
 		$consignment_id = get_post_meta($order->id,'_myparcel_consignment_id',true);
+
+		$pdf_link = wp_nonce_url( admin_url( 'edit.php?&action=wcmyparcel-label&order_ids=' . $order->id ), 'wcmyparcel-label' );
+		$export_link = wp_nonce_url( admin_url( 'edit.php?&action=wcmyparcel&order_ids=' . $order->id ), 'wcmyparcel' );
 		if (!empty($consignment_id)) {
-			$pdf_link = wp_nonce_url( admin_url( 'edit.php?&action=wcmyparcel-label&order_ids=' . $order->id ), 'wcmyparcel-label' );
 			?>
-			<a href="<?php echo $pdf_link; ?>" class="button tips one-myparcel" alt="Print MyParcel label" data-tip="Print MyParcel label">
+			<a href="<?php echo $pdf_link; ?>" class="button tips myparcel" alt="Print MyParcel label" data-tip="Print MyParcel label">
 				<img src="<?php echo dirname(plugin_dir_url(__FILE__)) . '/img/myparcel-pdf.png'; ?>" alt="Print MyParcel label">
 			</a>
-			<a href="<?php echo wp_nonce_url( admin_url( 'edit.php?&action=wcmyparcel&order_ids=' . $order->id ), 'wcmyparcel' ); ?>" class="button tips one-myparcel" alt="Exporteer naar MyParcel" data-tip="Exporteer naar MyParcel">
+			<a href="<?php echo $export_link; ?>" class="button tips myparcel one-myparcel" alt="Exporteer naar MyParcel" data-tip="Exporteer naar MyParcel">
 				<img src="<?php echo dirname(plugin_dir_url(__FILE__)) . '/img/myparcel-up.png'; ?>" alt="Exporteer naar MyParcel">
 			</a>
 			<?php
 		} else {
 			?>
-			<a href="<?php echo wp_nonce_url( admin_url( 'edit.php?&action=wcmyparcel&order_ids=' . $order->id ), 'wcmyparcel' ); ?>" class="button tips one-myparcel" alt="Exporteer naar MyParcel" data-tip="Exporteer naar MyParcel">
+			<a href="<?php echo $export_link; ?>" class="button tips myparcel one-myparcel" alt="Exporteer naar MyParcel" data-tip="Exporteer naar MyParcel">
 				<img src="<?php echo dirname(plugin_dir_url(__FILE__)) . '/img/myparcel-up.png'; ?>" alt="Exporteer naar MyParcel">
 			</a>
 			<?php

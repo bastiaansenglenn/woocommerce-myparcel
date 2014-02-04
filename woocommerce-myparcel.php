@@ -5,7 +5,7 @@ Plugin URI: http://www.myparcel.nl
 Description: Export your WooCommerce orders to MyParcel (www.myparcel.nl) and print labels directly from the WooCommerce admin
 Author: Ewout Fernhout
 Author URI: http://www.wpovernight.com
-Version: 1.3.2
+Version: 1.3.3
 Text Domain: wcmyparcel
 
 License: GPLv3 or later
@@ -29,10 +29,9 @@ if ( !class_exists( 'WooCommerce_MyParcel_Export' ) ) {
 			
 			$this->includes();
 			register_activation_hook( __FILE__, array( 'WC_MyParcel_Settings', 'default_settings' ) );
-			$this->settings = new WC_MyParcel_Settings();
-			$this->export = new WC_MyParcel_Export();
-			$this->writepanel = new WC_MyParcel_Writepanel();
-			$this->nlpostcodefields = new WC_NLPostcode_Fields();
+
+			// Load plugin classes
+			add_action( 'init', array( &$this, 'load_hooks' ) );
 		}
 	
 		/**
@@ -45,6 +44,12 @@ if ( !class_exists( 'WooCommerce_MyParcel_Export' ) ) {
 			include_once( 'includes/wcmyparcel-nlpostcode-fields.php' );
 		}
 		
+		public function load_hooks() {
+			$this->settings = new WC_MyParcel_Settings();
+			$this->export = new WC_MyParcel_Export();
+			$this->writepanel = new WC_MyParcel_Writepanel();
+			$this->nlpostcodefields = new WC_NLPostcode_Fields();
+		}
 	
 		/**
 		 * Load translations.
