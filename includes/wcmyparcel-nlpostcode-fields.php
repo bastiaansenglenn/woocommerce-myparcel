@@ -40,7 +40,7 @@ class WC_NLPostcode_Fields {
 		add_action( 'save_post', array( &$this,'save_custom_fields' ) );
 
 		// Processing checkout
-		add_action('woocommerce_checkout_update_order_meta', array( &$this, 'merge_street_number_suffix' ) );
+		add_action('woocommerce_checkout_update_order_meta', array( &$this, 'merge_street_number_suffix' ), 20, 2 );
 		add_filter('woocommerce_process_checkout_field_billing_postcode', array( &$this, 'clean_billing_postcode' ) );
 		add_filter('woocommerce_process_checkout_field_shipping_postcode', array( &$this, 'clean_shipping_postcode' ) );
 
@@ -464,14 +464,28 @@ class WC_NLPostcode_Fields {
 		// define order_comments placeholder
 		$order_comments_placeholder = _x('Notes about your order, e.g. special notes for delivery.', 'placeholder', 'woocommerce');
 
+		// check if ship to billing is set
+		if ( version_compare( WOOCOMMERCE_VERSION, '2.1', '<=' ) ) {
+			// old versions use 'shiptobilling'
+			$ship_to_different_address = isset($_POST['shiptobilling'])?false:true;
+		} else {
+			// WC2.1
+			$ship_to_different_address = isset($_POST['ship_to_different_address'])?true:false;
+		}
+
 		// check the billing & shipping fields
 		$field_types = array('billing','shipping');
 		$check_fields = array('address_1','address_2','city','state','postcode');
 		foreach ($field_types as $field_type) {
 			foreach ($check_fields as $check_field) {
-				file_put_contents(ABSPATH.'field_check.txt', $posted[$field_type.'_'.$check_field] .' || '. $fields[$check_field]['placeholder']."\n",FILE_APPEND);
+				// file_put_contents(ABSPATH.'field_check.txt', $posted[$field_type.'_'.$check_field] .' || '. $fields[$check_field]['placeholder']."\n",FILE_APPEND);
 				if ( $posted[$field_type.'_'.$check_field] == $fields[$check_field]['placeholder'] ) {
 					update_post_meta( $order_id, '_'.$field_type.'_'.$check_field, '' );
+
+					// also clear shipping field when ship_to_different_address is false
+					if ( $ship_to_different_address == false && $field_type == 'billing') {
+						update_post_meta( $order_id, '_shipping_'.$check_field, '' );
+					}
 				}
 			}
 		}

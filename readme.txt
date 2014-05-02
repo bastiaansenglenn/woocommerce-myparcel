@@ -3,7 +3,7 @@ Contributors: pomegranate
 Tags: woocommerce, export, myparcel
 Requires at least: 3.5.1 & WooCommerce 2.0+
 Tested up to: 3.8.1 & WooCommerce 2.1
-Stable tag: 1.3.7
+Stable tag: 1.3.8
 License: GPLv3 or later
 License URI: http://www.opensource.org/licenses/gpl-license.php
 
@@ -80,6 +80,12 @@ function wcmyparcel_new_email_text($track_trace_tekst) {
 3. View the status of the shipment on the order details page.
 
 == Changelog ==
+
+= 1.3.8 =
+* Fix: Big exports now run without any warnings/problems (was limited by the server)
+* Fix: Names, cities etc. with quotes (')
+* Fix: Error on combined foreign & Dutch exports
+* Fix: IE9 compatibility 
 
 = 1.3.7 =
 * Fix: Checkout placeholder data was being saved in older versions of Internet Explorer

@@ -70,7 +70,9 @@ class WC_MyParcel_Export {
 				// Get the data
 				if (!isset($_POST['data'])) 
 					die('Er zijn geen orders om te exporteren!');
-				$post_data = $_POST['data'];
+
+				// stripslashes! Wordpress always slashess... http://stackoverflow.com/q/8949768/1446634
+				$post_data = json_decode(stripslashes(json_encode($_POST['data'], JSON_HEX_APOS)), true);
 
 				$array = array(
 					'process'		=> isset($this->settings['process'])?1:0, // NOTE: process parameter is active, put on 0 to create a consignment without processing it
@@ -126,7 +128,7 @@ class WC_MyParcel_Export {
 
 				// ERROR LOGGING
 				if (isset($this->settings['error_logging']))
-					file_put_contents($this->log_file, date("Y-m-d H:i:s")." consignment data:\n".print_r($array['consignments'],true)."\n", FILE_APPEND);
+					file_put_contents($this->log_file, date("Y-m-d H:i:s")." consignment data:\n".var_export($array['consignments'],true)."\n", FILE_APPEND);
 				//die( print_r( $array ) );
 
 				$json = urlencode(json_encode($array));
@@ -137,7 +139,7 @@ class WC_MyParcel_Export {
 				$username = $this->settings['api_username'];
 				$api_key = $this->settings['api_key'];
 				
-				// create GET string
+				// create GET/POST string
 				$string = implode('&', array(
 					'json=' . $json,
 					'nonce=' . $nonce,
@@ -147,13 +149,31 @@ class WC_MyParcel_Export {
 				));
 			
 				// create hash
-				$signature = hash_hmac('sha1', 'GET' . '&' . urlencode($string), $api_key);
-			
-				$request = $target_site_api . 'create-consignments/?' . $string . '&signature=' . $signature;
+				$signature = hash_hmac('sha1', 'POST' . '&' . urlencode($string), $api_key);
+
+				// sign string
+				$string = $string . '&signature=' . $signature;
+
+				// Prepare post data
+				$opts = array('http' =>
+					array(
+						'method'  => 'POST',
+						'header'  => 'Content-type: application/x-www-form-urlencoded',
+						'content' => $string
+					)
+				);
+				$context  = stream_context_create($opts);
 				
+				// request URL
+				$request = $target_site_api . 'create-consignments/';
+				
+				// ERROR LOGGING
+				if (isset($this->settings['error_logging']))
+					file_put_contents($this->log_file, date("Y-m-d H:i:s")." Post content:\n".$string."\n", FILE_APPEND);
+
 				// process request
-				$result = file_get_contents($request);
-			
+				$result = file_get_contents($request, false, $context);
+
 				// decode result
 				$decode = json_decode(urldecode($result), true);
 
