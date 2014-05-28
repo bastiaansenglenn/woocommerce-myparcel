@@ -84,9 +84,9 @@ class WC_MyParcel_Export {
 						'ToAddress'		=> array(),
 						'ProductCode'	=> array(
 							'signature_on_receipt'	=> (isset($consignment['handtekening'])) ? '1' : '0',
-							'insured'				=> (isset($consignment['verzekerd'])) ? '1' : '0',
 							'return_if_no_answer'	=> (isset($consignment['retourbgg'])) ? '1' : '0',
 							'home_address_only'		=> (isset($consignment['huisadres'])) ? '1' : '0',
+							'home_address_signature'=> (isset($consignment['huishand'])) ? '1' : '0',
 							'mypa_insured'			=> (isset($consignment['huishandverzekerd'])) ? '1' : '0',
 							'insured'				=> (isset($consignment['verzekerd'])) ? '1' : '0',
 							
@@ -203,6 +203,13 @@ class WC_MyParcel_Export {
 
 						update_post_meta ( $order_id, '_myparcel_consignment_id', $consignment_id );
 						update_post_meta ( $order_id, '_myparcel_tracktrace', $tracktrace );
+
+						// set status to complete
+						if ( isset($this->settings['auto_complete']) ) {
+							$order = new WC_Order( $order_id );
+							$order->update_status( 'completed', 'Order voltooid na MyParcel export' );
+						}
+
 					} else {
 						//$error[$order_id] = $order_decode['error'];
 						$error[$order_id] = implode( ', ', $this->array_flatten($order_decode) );
@@ -303,6 +310,8 @@ class WC_MyParcel_Export {
 						file_put_contents($this->log_file, date("Y-m-d H:i:s")." PDF data received\n", FILE_APPEND);
 						file_put_contents($this->log_file, print_r($orders_tracktrace,true)."\n", FILE_APPEND);
 					}
+
+					do_action( 'wcmyparcel_before_label_print', $consignment_list );
 
 					$filename  = 'MyParcel';
 					$filename .= '-' . date('Y-m-d') . '.pdf';
