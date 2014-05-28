@@ -40,9 +40,12 @@ class WC_NLPostcode_Fields {
 		add_action( 'save_post', array( &$this,'save_custom_fields' ) );
 
 		// Processing checkout
-		add_action('woocommerce_checkout_update_order_meta', array( &$this, 'merge_street_number_suffix' ) );			
-		add_filter('woocommerce_process_checkout_field_billing_postcode', array( &$this, 'clean_billing_postcode' ) );			
-		add_filter('woocommerce_process_checkout_field_shipping_postcode', array( &$this, 'clean_shipping_postcode' ) );	
+		add_action('woocommerce_checkout_update_order_meta', array( &$this, 'merge_street_number_suffix' ), 20, 2 );
+		add_filter('woocommerce_process_checkout_field_billing_postcode', array( &$this, 'clean_billing_postcode' ) );
+		add_filter('woocommerce_process_checkout_field_shipping_postcode', array( &$this, 'clean_shipping_postcode' ) );
+
+		// Remove placeholder values (IE8 & 9)
+		add_action('woocommerce_checkout_update_order_meta', array( &$this, 'remove_placeholders' ), 10, 2 );
 
 		$this->load_woocommerce_filters();
 	}
@@ -381,7 +384,7 @@ class WC_NLPostcode_Fields {
 	 */
 	public function save_custom_fields($post_id) {
 		global $post_type;
-		if( $post_type == 'shop_order' ) {
+		if( $post_type == 'shop_order' && !empty($_POST) ) {
 			update_post_meta( $post_id, '_billing_street_name', stripslashes( $_POST['_billing_street_name'] ));
 			update_post_meta( $post_id, '_billing_house_number', stripslashes( $_POST['_billing_house_number'] ));
 			update_post_meta( $post_id, '_billing_house_number_suffix', stripslashes( $_POST['_billing_house_number_suffix'] ));
@@ -400,23 +403,34 @@ class WC_NLPostcode_Fields {
 	 * @return void
 	 */
 	public function merge_street_number_suffix ( $order_id ) {
+		// file_put_contents('postdata.txt', print_r($_POST,true)); // for debugging
+		if ( version_compare( WOOCOMMERCE_VERSION, '2.1', '<=' ) ) {
+			// old versions use 'shiptobilling'
+			$ship_to_different_address = isset($_POST['shiptobilling'])?false:true;
+		} else {
+			// WC2.1
+			$ship_to_different_address = isset($_POST['ship_to_different_address'])?true:false;
+		}
+
 		// check if country is NL
-		if ( $_POST['shipping_country'] == 'NL' ) {
+		if ( $_POST['billing_country'] == 'NL' ) {
 			// concatenate street & house number & copy to 'billing_address_1'
 			$billing_house_number = $_POST['billing_house_number'] . (!empty($_POST['billing_house_number_suffix'])?'-' . $_POST['billing_house_number_suffix']:'');
 			$billing_address_1 = $_POST['billing_street_name'] . ' ' . $billing_house_number;
 			update_post_meta( $order_id,  '_billing_address_1', $billing_address_1 );
 
 			// check if 'ship to billing address' is checked
-			if ( $_POST['shiptobilling'] ) {
+			if ( $ship_to_different_address == false ) {
 				// use billing address
 				update_post_meta( $order_id,  '_shipping_address_1', $billing_address_1 );
-			} else {
-				// concatenate street & house number & copy to 'shipping_address_1'
-				$shipping_house_number = $_POST['shipping_house_number'] . (!empty($_POST['shipping_house_number_suffix'])?'-' . $_POST['shipping_house_number_suffix']:'');
-				$shipping_address_1 = $_POST['shipping_street_name'] . ' ' . $shipping_house_number;
-				update_post_meta( $order_id,  '_shipping_address_1', $shipping_address_1 );
 			}
+		}
+
+		if ( $_POST['shipping_country'] == 'NL' && $ship_to_different_address == true) {
+			// concatenate street & house number & copy to 'shipping_address_1'
+			$shipping_house_number = $_POST['shipping_house_number'] . (!empty($_POST['shipping_house_number_suffix'])?'-' . $_POST['shipping_house_number_suffix']:'');
+			$shipping_address_1 = $_POST['shipping_street_name'] . ' ' . $shipping_house_number;
+			update_post_meta( $order_id,  '_shipping_address_1', $shipping_address_1 );
 		}
 		return;
 	}
@@ -434,6 +448,58 @@ class WC_NLPostcode_Fields {
 	public function clean_shipping_postcode ( ) {
 		$shipping_postcode = preg_replace('/[^a-zA-Z0-9]/', '', $_POST['shipping_postcode']);		
 		return $shipping_postcode;
+	}
+
+	/**
+	 * Remove placeholders from posted checkout data
+	 * @param  string $order_id order_id of the new order
+	 * @param  array  $posted   Array of posted form data
+	 * @return void
+	 */
+	public function remove_placeholders( $order_id, $posted ) {
+		// get default address fields with their placeholders
+		$countries = new WC_Countries;
+		$fields = $countries->get_default_address_fields();
+
+		// define order_comments placeholder
+		$order_comments_placeholder = _x('Notes about your order, e.g. special notes for delivery.', 'placeholder', 'woocommerce');
+
+		// check if ship to billing is set
+		if ( version_compare( WOOCOMMERCE_VERSION, '2.1', '<=' ) ) {
+			// old versions use 'shiptobilling'
+			$ship_to_different_address = isset($_POST['shiptobilling'])?false:true;
+		} else {
+			// WC2.1
+			$ship_to_different_address = isset($_POST['ship_to_different_address'])?true:false;
+		}
+
+		// check the billing & shipping fields
+		$field_types = array('billing','shipping');
+		$check_fields = array('address_1','address_2','city','state','postcode');
+		foreach ($field_types as $field_type) {
+			foreach ($check_fields as $check_field) {
+				// file_put_contents(ABSPATH.'field_check.txt', $posted[$field_type.'_'.$check_field] .' || '. $fields[$check_field]['placeholder']."\n",FILE_APPEND);
+				if ( $posted[$field_type.'_'.$check_field] == $fields[$check_field]['placeholder'] ) {
+					update_post_meta( $order_id, '_'.$field_type.'_'.$check_field, '' );
+
+					// also clear shipping field when ship_to_different_address is false
+					if ( $ship_to_different_address == false && $field_type == 'billing') {
+						update_post_meta( $order_id, '_shipping_'.$check_field, '' );
+					}
+				}
+			}
+		}
+
+		// check the order comments field		
+		if ($posted['order_comments'] == $order_comments_placeholder ) {
+			wp_update_post( array(
+				'ID'			=> $order_id,
+				'post_excerpt'	=> '',
+				)
+			);			
+		}
+		
+		return;
 	}
 
 	/**
