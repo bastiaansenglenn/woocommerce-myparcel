@@ -5,7 +5,7 @@ class WC_MyParcel_Export {
 	/**
 	 * Construct.
 	 */
-	 		
+			
 	public function __construct() {
 		add_action( 'load-edit.php', array( &$this, 'wcmyparcel_action' ) ); // Export actions (popup & file export)
 		$this->settings = get_option( 'wcmyparcel_settings' );
@@ -70,7 +70,9 @@ class WC_MyParcel_Export {
 				// Get the data
 				if (!isset($_POST['data'])) 
 					die('Er zijn geen orders om te exporteren!');
-				$post_data = $_POST['data'];
+
+				// stripslashes! Wordpress always slashes POST data, regardless of magic quotes settings... http://stackoverflow.com/q/8949768/1446634
+				$post_data = stripslashes_deep($_POST['data']);
 
 				$array = array(
 					'process'		=> isset($this->settings['process'])?1:0, // NOTE: process parameter is active, put on 0 to create a consignment without processing it
@@ -82,9 +84,9 @@ class WC_MyParcel_Export {
 						'ToAddress'		=> array(),
 						'ProductCode'	=> array(
 							'signature_on_receipt'	=> (isset($consignment['handtekening'])) ? '1' : '0',
-							'insured'				=> (isset($consignment['verzekerd'])) ? '1' : '0',
 							'return_if_no_answer'	=> (isset($consignment['retourbgg'])) ? '1' : '0',
 							'home_address_only'		=> (isset($consignment['huisadres'])) ? '1' : '0',
+							'home_address_signature'=> (isset($consignment['huishand'])) ? '1' : '0',
 							'mypa_insured'			=> (isset($consignment['huishandverzekerd'])) ? '1' : '0',
 							'insured'				=> (isset($consignment['verzekerd'])) ? '1' : '0',
 							
@@ -126,37 +128,12 @@ class WC_MyParcel_Export {
 
 				// ERROR LOGGING
 				if (isset($this->settings['error_logging']))
-					file_put_contents($this->log_file, date("Y-m-d H:i:s")." consignment data:\n".print_r($array['consignments'],true)."\n", FILE_APPEND);
+					file_put_contents($this->log_file, date("Y-m-d H:i:s")." consignment data:\n".var_export($array['consignments'],true)."\n", FILE_APPEND);
 				//die( print_r( $array ) );
 
-				$json = urlencode(json_encode($array));
-			
-				$target_site_api = 'http://www.myparcel.nl/api/';
-				$nonce = rand(0,255); // note: this should be incremented in case 2 requests occur within the same timestamp (second)
-				$timestamp = time();
-				$username = $this->settings['api_username'];
-				$api_key = $this->settings['api_key'];
+				// Send consignments to MyParcel API
+				$decode = $this->api_request( 'create-consignments', $array);
 				
-				// create GET string
-				$string = implode('&', array(
-					'json=' . $json,
-					'nonce=' . $nonce,
-					'test=' . (isset( $this->settings['testmode'] ) ? '1' : '0'),
-					'timestamp=' . $timestamp,
-					'username=' . $username,
-				));
-			
-				// create hash
-				$signature = hash_hmac('sha1', 'GET' . '&' . urlencode($string), $api_key);
-			
-				$request = $target_site_api . 'create-consignments/?' . $string . '&signature=' . $signature;
-				
-				// process request
-				$result = file_get_contents($request);
-			
-				// decode result
-				$decode = json_decode(urldecode($result), true);
-
 				// ERROR LOGGING
 				if (isset($this->settings['error_logging']))
 					file_put_contents($this->log_file, date("Y-m-d H:i:s")." API response:\n".print_r($decode,true)."\n", FILE_APPEND);
@@ -167,20 +144,29 @@ class WC_MyParcel_Export {
 				}
 
 				// put order_id in key!
-				$decode = array_combine(array_keys($array['consignments']), array_values($decode));
+				$decode = array_combine( array_keys($array['consignments']), array_values($decode) );
 				
 				//die( print_r( $decode, true ) ); //for debugging
 
 				$consignment_list = array();
+				$order_ids = array();
 				$error = array();
 				foreach ($decode as $order_id => $order_decode ) {
 					if ( !isset($order_decode['error']) ) {
 						$consignment_id = $order_decode['consignment_id'];
+						$order_ids[] = $order_id;
 						$consignment_list[] = $consignment_id; //collect consigment_ids in an array for pdf retreival
 						$tracktrace = $order_decode['tracktrace'];
 
 						update_post_meta ( $order_id, '_myparcel_consignment_id', $consignment_id );
 						update_post_meta ( $order_id, '_myparcel_tracktrace', $tracktrace );
+
+						// set status to complete
+						if ( isset($this->settings['auto_complete']) ) {
+							$order = new WC_Order( $order_id );
+							$order->update_status( 'completed', 'Order voltooid na MyParcel export' );
+						}
+
 					} else {
 						//$error[$order_id] = $order_decode['error'];
 						$error[$order_id] = implode( ', ', $this->array_flatten($order_decode) );
@@ -189,7 +175,8 @@ class WC_MyParcel_Export {
 				}
 
 				$consignment_list_flat = implode('x', $consignment_list);
-				$pdf_url = wp_nonce_url( admin_url( 'edit.php?&action=wcmyparcel-label&consignment=' . $consignment_list_flat ), 'wcmyparcel-label' );					
+				$order_ids_flat = implode('x', $order_ids);
+				$pdf_url = wp_nonce_url( admin_url( 'edit.php?&action=wcmyparcel-label&consignment=' . $consignment_list_flat . '&order_ids=' . $order_ids_flat ), 'wcmyparcel-label' );
 				
 				$this->export_done($pdf_url, $consignment_list, $error);
 
@@ -202,11 +189,12 @@ class WC_MyParcel_Export {
 				if (isset($this->settings['error_logging']))
 					file_put_contents($this->log_file, date("Y-m-d H:i:s")." Label request\n", FILE_APPEND);
 
-				if ( isset($_GET['consignment']) ) {
-					$consignment_id_encoded = $_GET['consignment'];
-				} elseif ( isset($_GET['order_ids']) ) {
-					$order_ids = explode('x',$_GET['order_ids']);
-					$consignment_list = array();
+				$order_ids = explode('x',$_GET['order_ids']);
+
+				$consignment_list = array();
+
+				if ( !isset($_GET['consignment']) ) {
+					// Bulk export label
 					foreach ($order_ids as $order_id) {
 						if (get_post_meta($order_id,'_myparcel_consignment_id',true)) {
 							$order_consignment_id = get_post_meta($order_id,'_myparcel_consignment_id',true);
@@ -214,46 +202,32 @@ class WC_MyParcel_Export {
 						}
 					}
 					$consignment_id_encoded = implode('x', $consignment_list);					
+				} else {
+					// Label request from modal (directly after export)
+					// consignments already given!
+					$consignments = explode('x',$_GET['consignment']);
+					$consignment_list = array_combine($order_ids, $consignments);
+					$consignment_id_encoded = implode('x', $consignment_list);					
 				}
 
 				$consignment_id = str_replace('x', ',', $consignment_id_encoded);
-				$username = $this->settings['api_username'];
-				$api_key = $this->settings['api_key'];
-				$target_site_api = 'http://www.myparcel.nl/api/';
-				$timestamp = time();
-
-				// ERROR LOGGING
-				if (isset($this->settings['error_logging']))
-					file_put_contents($this->log_file, date("Y-m-d H:i:s")." consignment(s) requested: ".$consignment_id."\n", FILE_APPEND);
 
 				// retrieve pdf for the consignment (this is another api call to retrieve-pdf)
 				$array = array(
 					'consignment_id' => $consignment_id,
 					'format'		 => 'json',
 				);
-				$json = urlencode(json_encode($array));
-				$nonce = rand(0,255); // note: this should be incremented in case 2 requests occur within the same timestamp (second)
-				$string = implode('&', array(
-					'json=' . $json,
-					'nonce=' . $nonce,
-					'test=' . (isset( $this->settings['testmode'] ) ? '1' : '0'),
-					'timestamp=' . $timestamp,
-					'username=' . $username,
-				));
-				$signature = hash_hmac('sha1', 'GET' . '&' . urlencode($string), $api_key);
+
+				// ERROR LOGGING
+				if (isset($this->settings['error_logging']))
+					file_put_contents($this->log_file, date("Y-m-d H:i:s")." consignment(s) requested: ".$consignment_id."\n", FILE_APPEND);
+
+				// Request labels from MyParcel API
+				$decode = $this->api_request( 'retrieve-pdf', $array);
 				
-				// create final request
-				$request = $target_site_api . 'retrieve-pdf/?' . $string . '&signature=' . $signature;
-			
-				// process request
-				$result = file_get_contents($request);
-			
-				// decode result
-				$decode = json_decode($result);
-				
-				if (isset($decode->consignment_pdf)) {
-					$pdf_data = $decode->consignment_pdf;
-					$consigments_tracktrace = array_combine( explode(',',$decode->consignment_id), explode(',',$decode->tracktrace) );
+				if (isset($decode['consignment_pdf'])) {
+					$pdf_data = $decode['consignment_pdf'];
+					$consigments_tracktrace = array_combine( explode(',',$decode['consignment_id']), explode(',',$decode['tracktrace']) );
 					
 					// track & trace fallback
 					foreach ( $consignment_list as $order_id => $consignment_id ) {
@@ -266,7 +240,7 @@ class WC_MyParcel_Export {
 						}
 					}
 					
-					unset($decode->consignment_pdf);
+					unset($decode['consignment_pdf']);
 					
 					// ERROR LOGGING
 					if (isset($this->settings['error_logging'])) {
@@ -274,14 +248,33 @@ class WC_MyParcel_Export {
 						file_put_contents($this->log_file, print_r($orders_tracktrace,true)."\n", FILE_APPEND);
 					}
 
+					do_action( 'wcmyparcel_before_label_print', $consignment_list );
+
 					$filename  = 'MyParcel';
 					$filename .= '-' . date('Y-m-d') . '.pdf';
 					
-					header('Content-type: application/force-download');
-					header('Content-Disposition: attachment; filename="'.$filename.'"');
+					// Get output setting
+					$output_mode = isset($this->settings['download_display'])?$this->settings['download_display']:'';
+
+					// Switch headers according to output setting
+					if ( $output_mode == 'display' ) {
+						header('Content-type: application/pdf');
+						header('Content-Disposition: inline; filename="'.$filename.'"');
+					} else {
+						header('Content-Description: File Transfer');
+						header('Content-Type: application/octet-stream');
+						header('Content-Disposition: attachment; filename="'.$filename.'"'); 
+						header('Content-Transfer-Encoding: binary');
+						header('Connection: Keep-Alive');
+						header('Expires: 0');
+						header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+						header('Pragma: public');
+					}
+
+					// stream data
 					echo urldecode($pdf_data);
-				} elseif (isset($decode->error)) {
-					echo 'Error: ' . $decode->error;
+				} elseif (isset($decode['error'])) {
+					echo 'Error: ' . $decode['error'];
 					
 					if (isset($this->settings['error_logging']))
 						file_put_contents($this->log_file, date("Y-m-d H:i:s")." server response:\n".print_r($decode,true)."\n", FILE_APPEND);
@@ -297,6 +290,61 @@ class WC_MyParcel_Export {
 		}
 			
 		}
+	}
+
+	public function api_request( $request_type, $data, $method = 'POST' ) {
+		// collect API credentials/settings
+		$target_site_api = 'http://www.myparcel.nl/api/';
+		$username = $this->settings['api_username'];
+		$api_key = $this->settings['api_key'];
+		$timestamp = time();
+		$nonce = rand(0,255); // note: this should be incremented in case 2 requests occur within the same timestamp (second)
+
+		// JSON encode data
+		$json = urlencode(json_encode($data));
+
+		// create GET/POST string (keys in alphabetical order)
+		$string = implode('&', array(
+			'json=' . $json,
+			'nonce=' . $nonce,
+			'test=' . (isset( $this->settings['testmode'] ) ? '1' : '0'),
+			'timestamp=' . $timestamp,
+			'username=' . $username,
+		));	
+
+		// ERROR LOGGING
+		if (isset($this->settings['error_logging']))
+			file_put_contents($this->log_file, date("Y-m-d H:i:s")." Post content:\n".$string."\n", FILE_APPEND);
+
+		// create hash
+		$signature = hash_hmac('sha1', $method . '&' . urlencode($string), $api_key);
+
+		if($method == 'POST')
+		{
+			$ch = curl_init();
+			curl_setopt($ch, CURLOPT_URL, $target_site_api . $request_type . '/');
+			curl_setopt($ch, CURLOPT_POST, true);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $string . '&signature=' . $signature);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+			curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+			$result = curl_exec($ch);
+			curl_close ($ch);
+		}
+		else // GET
+		{
+			// depricated, long urls for batch processing gives issues
+			$request = $target_site_api . $request_type . '/?' . $string . '&signature=' . $signature;
+			$result = file_get_contents($request);
+		}
+
+		// decode result
+		$decode = json_decode($result, true);
+		
+		// ERROR LOGGING
+		if (isset($this->settings['error_logging']))
+			file_put_contents($this->log_file, date("Y-m-d H:i:s")." API response:\n".print_r($decode,true)."\n", FILE_APPEND);
+
+		return $decode;
 	}
 
 	/**
@@ -436,14 +484,16 @@ class WC_MyParcel_Export {
 			} else {
 				echo '<p>De geselecteerde orders zijn succesvol verwerkt bij MyParcel.<br />';		
 			}
+			$target = ( isset($this->settings['download_display']) && $this->settings['download_display'] == 'display') ? 'target="_blank"' : '';
+
 ?>
 Hieronder kunt u de labels in PDF formaat downloaden.</p>
-<?php printf('<a href="%1$s"><img src="%2$s"></a>', $pdf_url, dirname(plugin_dir_url(__FILE__)) . '/img/download-pdf.png'); ?>
+<?php printf('<a href="%1$s" %2$s><img src="%3$s"></a>', $pdf_url, $target, dirname(plugin_dir_url(__FILE__)) . '/img/download-pdf.png'); ?>
 <p><strong>Let op!</strong><br />
 Uw pakket met daarop het verzendetiket dient binnen 9 werkdagen na het aanmaken bij PostNL binnen te zijn. Daarna verliest het zijn geldigheid.
 </body></html>
 <?php
-	 	}
+		}
 	}
 
 }
