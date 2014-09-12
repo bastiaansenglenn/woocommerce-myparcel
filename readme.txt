@@ -2,8 +2,8 @@
 Contributors: pomegranate
 Tags: woocommerce, export, myparcel
 Requires at least: 3.5.1 & WooCommerce 2.0+
-Tested up to: 3.8 & WooCommerce 2.1
-Stable tag: 1.3.4
+Tested up to: 3.9.1 & WooCommerce 2.1.9
+Stable tag: 1.4.2
 License: GPLv3 or later
 License URI: http://www.opensource.org/licenses/gpl-license.php
 
@@ -43,11 +43,59 @@ In the search field type "WooCommerce MyParcel" and click Search Plugins. You ca
 2. Using an FTP program, or your hosting control panel, upload the unzipped plugin folder to your WordPress installation's wp-content/plugins/ directory.
 3. Activate the plugin from the Plugins menu within the WordPress admin.
 
+= Setting up the plugin =
+1. Go to the menu `settings > MyParcel`.
+2. Fill in your API Details. If you don't have API details, send an email to info@myparcel.nl with your account name and you will be sent all necessary information.
+3. Under 'Default export settings' you can set options that should be set by default for the export. You can change these settings per order at the time of export.
+4. The plugin is ready to be used!
+
+= Testing =
+We advise you to test the whole checkout procedure once to see if everything works as it should. Pay special attention to the following:
+
+The MyParcel plugin adds extra fields to the checkout of your webshop, to make it possible for the client to add street name, number and optional additions separately. This way you can be sure that everything is entered correctly. Because not all checkouts are configured alike, it's possible that the positioning/alignment of these extra fields have to be adjusted.
+
+Moreover, after a label is created, a track&trace code is added to the order. When the order is completed from WooCommerce, this track & trace code is added to the email (when this is enabled in the settings). Check that the code is correctly displayed in your template. You can read how to change the text in the FAQ section.
+
 == Frequently Asked Questions ==
 
-= How do I get an API key =
+= How do I get an API key? =
 
 Send an email to info@myparcel.nl with your account name and you will be sent all necessary information.
+
+= How do I change the track&trace email text? =
+You can change the text (which is placed above the order details table by default) by applying the following filter:
+`
+add_filter( 'wcmyparcel_email_text', 'wcmyparcel_new_email_text' );
+function wcmyparcel_new_email_text($track_trace_tekst) {
+	// Tutoyeren ipv vousvoyeren
+	$nieuwe_tekst = 'Je kunt je bestelling volgen met het volgende PostNL track&trace nummer:';
+	return $nieuwe_tekst;
+}
+`
+
+= How do I hide PakjeGemak for mobile browsers? =
+The following CSS hides PakjeGemak for all devices smaller than 1024px (which is an iPad in landscape). Note that this also excludes smaller laptop & pc screens, if you want to target different devices more specifically you can extend the @media query. See this site for more details: http://css-tricks.com/snippets/css/media-queries-for-standard-devices/
+
+`
+@media only screen 
+and (max-width : 1024px) {
+	/* iPad en kleiner */
+	.myparcel-pakjegemak {
+		display: none;
+		visibility: hidden;
+	}
+}
+`
+
+= How do I change the PakjeGemak location on the checkout page? =
+You can do that with the following filter, where you replace `woocommerce_checkout_after_customer_details` with the action/location that you need. You can find the actions in `woocommerce/templates/checkout/form-checkout.php`, `woocommerce/templates/checkout/form-billing.php` and `woocommerce/templates/checkout/form-shipping.php` for example. You can also use a custom action.
+
+`
+add_filter( 'wcmyparcel_pakjegemak_locatie', 'wcmyparcel_pakjegemak_move', 10, 1 );
+function wcmyparcel_pakjegemak_move() {
+	return 'woocommerce_checkout_after_customer_details'; // change this into your preferred location
+`
+
 
 == Screenshots ==
 
@@ -56,6 +104,37 @@ Send an email to info@myparcel.nl with your account name and you will be sent al
 3. View the status of the shipment on the order details page.
 
 == Changelog ==
+
+= 1.4.2 =
+* Fix: weight unit is now properly taken into account
+* Tweak: different bulk action hook (for better compatibility)
+
+= 1.4.1 =
+* Fix: Broken special characters (ë, û, à etc.)
+* Tweak: different API communication mode for secure configuration
+
+= 1.4.0 =
+* Feature: Print order number on label
+* Feature: PakjeGemak integration
+* Feature: Option to autocomplete order after successful export to MyParcel
+* Feature: Option to display track&trace link on my account page
+
+= 1.3.8 =
+* Fix: Big exports now run without any warnings/problems (was limited by the server)
+* Fix: Names, cities etc. with quotes (')
+* Fix: Error on combined foreign & Dutch exports
+* Fix: IE9 compatibility 
+
+= 1.3.7 =
+* Fix: Checkout placeholder data was being saved in older versions of Internet Explorer
+
+= 1.3.6 =
+* Feature: Option to download PDF or display in browser
+* Fix: warnings when debug set to true & downloading labels directly after exporting
+* Fix: WooCommerce 2.1 bug with copying foreign address data
+
+= 1.3.5 =
+* Fix: Errors when trashing & restoring trashed orders
 
 = 1.3.4 =
 * Fix: Errors on foreign country export
