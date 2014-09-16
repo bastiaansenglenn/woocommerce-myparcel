@@ -68,7 +68,7 @@
 						</td>
 						<td><p><?php
 							if ( $row['landcode'] == 'NL' && ( empty($row['straat']) || empty($row['huisnummer']) ) ) { ?>
-							<span style="color:red">Deze order bevat geen geldige straatnaam- en huisnummergegevens, en kan daarom niet worden ge-exporteerd!</span>
+							<span style="color:red">Deze order bevat geen geldige straatnaam- en huisnummergegevens, en kan daarom niet worden ge-exporteerd! Waarschijnlijk is deze order geplaatst voordat de MyParcel plugin werd geactiveerd. De gegevens kunnen wel handmatig worden ingevoerd in het order scherm.</span>
 							</p>
 						</td>
 					</tr>
@@ -141,14 +141,18 @@
 									<td><input type="text" name="data[<?php echo $row['orderid']; ?>][verzekerdbedrag]" value="" size="5"></td>						
 								</tr>
 								<tr>
-									<?php if (!isset($this->settings['bericht'])) $this->settings['bericht'] = ''; ?>
+									<?php if (!isset($this->settings['bericht'])) $this->settings['bericht'] = '';
+									$bericht = str_replace('[ORDER_NR]', $row['ordernr'], $this->settings['bericht']);
+									?>
 									<td>Optioneel bericht (niet op label, wel in track&trace)</td>
-									<td><input type="text" name="data[<?php echo $row['orderid']; ?>][bericht]" value="<?php echo $this->settings['bericht']; ?>"></td>
+									<td><input type="text" name="data[<?php echo $row['orderid']; ?>][bericht]" value="<?php echo $bericht; ?>"></td>
 								</tr>
 								<tr>
-									<?php if (!isset($this->settings['kenmerk'])) $this->settings['kenmerk'] = ''; ?>
+									<?php if (!isset($this->settings['kenmerk'])) $this->settings['kenmerk'] = '';
+									$kenmerk = str_replace('[ORDER_NR]', $row['ordernr'], $this->settings['kenmerk']);
+									?>
 									<td>Eigen kenmerk (linksboven op label)</td>
-									<td><input type="text" name="data[<?php echo $row['orderid']; ?>][kenmerk]" value="<?php echo $this->settings['kenmerk']; ?>"></td>
+									<td><input type="text" name="data[<?php echo $row['orderid']; ?>][kenmerk]" value="<?php echo $kenmerk; ?>"></td>
 								</tr>
 							</table>
 						</td>
