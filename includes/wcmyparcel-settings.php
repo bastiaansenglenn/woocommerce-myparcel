@@ -53,8 +53,8 @@ class WC_MyParcel_Settings {
 	
 		// Section.
 		add_settings_section(
-			'api_credentials',
-			__( 'MyParcel API login-gegevens', 'wcmyparcel' ),
+			'general',
+			__( 'Algemene instellingen', 'wcmyparcel' ),
 			array( &$this, 'section_options_callback' ),
 			$option
 		);
@@ -64,7 +64,7 @@ class WC_MyParcel_Settings {
 			__( 'Gebruikersnaam', 'wcmyparcel' ),
 			array( &$this, 'text_element_callback' ),
 			$option,
-			'api_credentials',
+			'general',
 			array(
 				'menu'			=> $option,
 				'id'			=> 'api_username',
@@ -78,7 +78,7 @@ class WC_MyParcel_Settings {
 			__( 'API key', 'wcmyparcel' ),
 			array( &$this, 'text_element_callback' ),
 			$option,
-			'api_credentials',
+			'general',
 			array(
 				'menu'			=> $option,
 				'id'			=> 'api_key',
@@ -87,12 +87,46 @@ class WC_MyParcel_Settings {
 			)
 		);
 
-		// Section.
-		add_settings_section(
-			'email',
-			__( 'WooCommerce email instellingen', 'wcmyparcel' ),
-			array( &$this, 'section_options_callback' ),
-			$option
+		add_settings_field(
+			'download_display',
+			__( 'Labelweergave', 'wpo_wcpdf' ),
+			array( &$this, 'radio_element_callback' ),
+			$option,
+			'general',
+			array(
+				'menu'			=> $option,
+				'id'			=> 'download_display',
+				'options' 		=> array(
+					'download'	=> __( 'Download PDF' , 'wcmyparcel' ),
+					'display'	=> __( 'Open de PDF in een nieuw venster/tab' , 'wcmyparcel' ),
+				),
+			)
+		);
+
+		add_settings_field(
+			'auto_complete',
+			__( 'Zet orders automatisch op voltooid na (succesvolle) MyParcel export', 'wcmyparcel' ),
+			array( &$this, 'checkbox_element_callback' ),
+			$option,
+			'general',
+			array(
+				'menu'			=> $option,
+				'id'			=> 'auto_complete',
+				'description'	=> __( 'Zorg dat <strong>Verwerk labels direct</strong> staat ingeschakeld als u deze optie gebruikt in combinatie met <strong>Email track&trace code</strong>, anders wordt de track&trace code niet mee gestuurd.', 'wcmyparcel' )
+			)
+		);		
+
+		add_settings_field(
+			'process',
+			__( 'Verwerk labels direct', 'wcmyparcel' ),
+			array( &$this, 'checkbox_element_callback' ),
+			$option,
+			'general',
+			array(
+				'menu'			=> $option,
+				'id'			=> 'process',
+				'description'	=> __( 'Wanneer u deze optie ingeschakeld heeft, worden de orders bij het exporteren naar MyParcel direct verwerkt.', 'wcmyparcel' )
+			)
 		);
 
 		add_settings_field(
@@ -100,7 +134,7 @@ class WC_MyParcel_Settings {
 			__( 'Email track&trace code', 'wcmyparcel' ),
 			array( &$this, 'checkbox_element_callback' ),
 			$option,
-			'email',
+			'general',
 			array(
 				'menu'			=> $option,
 				'id'			=> 'email_tracktrace',
@@ -108,26 +142,66 @@ class WC_MyParcel_Settings {
 			)
 		);
 
-		
-		// Section.
-		add_settings_section(
-			'default_values',
-			__( 'MyParcel standaard export instellingen', 'wcmyparcel' ),
-			array( &$this, 'section_options_callback' ),
-			$option
+		add_settings_field(
+			'myaccount_tracktrace',
+			__( 'Laat track&trace code op de <em>Mijn Account</em> pagina zien.', 'wcmyparcel' ),
+			array( &$this, 'checkbox_element_callback' ),
+			$option,
+			'general',
+			array(
+				'menu'			=> $option,
+				'id'			=> 'myaccount_tracktrace',
+			)
 		);
 
 		add_settings_field(
-			'process',
-			__( 'Verwerk labels direct', 'wcmyparcel' ),
+			'pakjegemak',
+			__( 'Voeg PakjeGemak toe aan de WooCommerce checkout', 'wcmyparcel' ),
 			array( &$this, 'checkbox_element_callback' ),
 			$option,
-			'default_values',
+			'general',
 			array(
 				'menu'			=> $option,
-				'id'			=> 'process',
-				'description'	=> __( 'Wanneer u deze optie ingeschakeld heeft, worden de orders bij het exporteren naar MyParcel direct verwerkt.', 'wcmyparcel' )
+				'id'			=> 'pakjegemak',
+				'description'	=> __( 'Steeds meer consumenten kiezen ervoor hun pakket af te halen bij een afhaallocatie in plaats van deze thuis te laten bezorgen. Deze service van PostNL wordt PakjeGemak genoemd. U kunt dit ook aanbieden aan uw klanten.<br/><strong>Let op!</strong> Deze service is niet geoptimaliseerd voor mobiele browsers en werkt daar ook niet zo goed. U zou er voor kunnen kiezen om de pakjegemak knop door middel van CSS te verbergen voor mobiele browsers.', 'wcmyparcel' )
 			)
+		);
+		
+		add_settings_field(
+			'pakjegemak_description',
+			__( 'Omschrijving van PakjeGemak op de checkout pagina', 'wcmyparcel' ),
+			array( &$this, 'textarea_element_callback' ),
+			$option,
+			'general',
+			array(
+				'menu'			=> $option,
+				'id'			=> 'pakjegemak_description',
+				'width'			=> '50',
+				'height'		=> '4',
+				'default'		=> 'Wilt u uw bestelling liever laten versturen naar een afhaallocatie van PostNL? Maak dan gebruik van de PakjeGemak service.',
+			)
+		);
+
+		add_settings_field(
+			'pakjegemak_button',
+			__( 'Tekst op de pakjegemak knop', 'wcmyparcel' ),
+			array( &$this, 'text_element_callback' ),
+			$option,
+			'general',
+			array(
+				'menu'			=> $option,
+				'id'			=> 'pakjegemak_button',
+				'size'			=> '50',
+				'default'		=> 'PakjeGemak afhaallocatie kiezen',
+			)
+		);
+
+		// Section.
+		add_settings_section(
+			'default_values',
+			__( 'Standaard export instellingen', 'wcmyparcel' ),
+			array( &$this, 'section_options_callback' ),
+			$option
 		);
 
 		add_settings_field(
@@ -158,7 +232,7 @@ class WC_MyParcel_Settings {
 		
 		add_settings_field(
 			'extragroot',
-			__( 'Extra groot formaat (+ € 2.19)', 'wcmyparcel' ),
+			__( 'Extra groot formaat (+ &euro;2.19)', 'wcmyparcel' ),
 			array( &$this, 'checkbox_element_callback' ),
 			$option,
 			'default_values',
@@ -171,7 +245,7 @@ class WC_MyParcel_Settings {
 		
 		add_settings_field(
 			'huisadres',
-			__( 'Niet bij buren bezorgen (+ € 0.26)', 'wcmyparcel' ),
+			__( 'Niet bij buren bezorgen (+ &euro;0.26)', 'wcmyparcel' ),
 			array( &$this, 'checkbox_element_callback' ),
 			$option,
 			'default_values',
@@ -183,7 +257,7 @@ class WC_MyParcel_Settings {
 		
 		add_settings_field(
 			'handtekening',
-			__( 'Handtekening voor ontvangst (+ € 0.33)', 'wcmyparcel' ),
+			__( 'Handtekening voor ontvangst (+ &euro;0.33)', 'wcmyparcel' ),
 			array( &$this, 'checkbox_element_callback' ),
 			$option,
 			'default_values',
@@ -196,7 +270,7 @@ class WC_MyParcel_Settings {
 		
 		add_settings_field(
 			'huishand',
-			__( 'Niet bij buren bezorgen + Handtekening voor ontvangst (+ € 0.40)', 'wcmyparcel' ),
+			__( 'Niet bij buren bezorgen + Handtekening voor ontvangst (+ &euro;0.40)', 'wcmyparcel' ),
 			array( &$this, 'checkbox_element_callback' ),
 			$option,
 			'default_values',
@@ -209,7 +283,7 @@ class WC_MyParcel_Settings {
 		
 		add_settings_field(
 			'huishandverzekerd',
-			__( 'Niet bij buren bezorgen + Handtekening voor ontvangst + verzekerd tot € 50 (+ € 0.50)', 'wcmyparcel' ),
+			__( 'Niet bij buren bezorgen + Handtekening voor ontvangst + verzekerd tot &euro;50 (+ &euro;0.50)', 'wcmyparcel' ),
 			array( &$this, 'checkbox_element_callback' ),
 			$option,
 			'default_values',
@@ -235,7 +309,7 @@ class WC_MyParcel_Settings {
 		
 		add_settings_field(
 			'verzekerd',
-			__( 'Verhoogd aansprakelijk (+ € 1.58 per 500 euro verzekerd)', 'wcmyparcel' ),
+			__( 'Verhoogd aansprakelijk (+ &euro;1.58 per 500 euro verzekerd)', 'wcmyparcel' ),
 			array( &$this, 'checkbox_element_callback' ),
 			$option,
 			'default_values',
@@ -269,7 +343,7 @@ class WC_MyParcel_Settings {
 			array(
 				'menu'			=> $option,
 				'id'			=> 'bericht',
-				'description'	=> __( "Met deze optie kunt u een optioneel bericht aan de zending toevoegen. Deze kunt u later terug lezen in uw overzicht zendingen. Deze tekst komt niet terug op het etiket, maar is door de klant wel terug te vinden op de track&trace pagina van PostNL onder 'Referentie'", 'wcmyparcel' ),
+				'description'	=> __( "Met deze optie kunt u een optioneel bericht aan de zending toevoegen. Deze kunt u later terug lezen in uw overzicht zendingen. Deze tekst komt niet terug op het etiket, maar is door de klant wel terug te vinden op de track&trace pagina van PostNL onder 'Referentie'. Gebruik de code <strong>[ORDER_NR]</strong> om het WooCommerce ordernummer automatisch in te laten vullen.", 'wcmyparcel' ),
 			)
 		);
 
@@ -282,7 +356,7 @@ class WC_MyParcel_Settings {
 			array(
 				'menu'			=> $option,
 				'id'			=> 'kenmerk',
-				'description'	=> __( "Met deze optie kunt u een kenmerk aan de zending toevoegen. Deze wordt linksboven op het label geprint en hierop kan later in het overzicht zendingen gezocht of geordend worden.", 'wcmyparcel' ),
+				'description'	=> __( "Met deze optie kunt u een kenmerk aan de zending toevoegen. Deze wordt linksboven op het label geprint en hierop kan later in het overzicht zendingen gezocht of geordend worden. Ook hier kunt u de code <strong>[ORDER_NR]</strong> gebruiken.", 'wcmyparcel' ),
 			)
 		);
 
@@ -309,6 +383,7 @@ class WC_MyParcel_Settings {
 			$option
 		);
 
+		/*
 		add_settings_field(
 			'testmode',
 			__( 'Testmodus', 'wcmyparcel' ),
@@ -322,6 +397,7 @@ class WC_MyParcel_Settings {
 				//'description'	=> __( 'Schakel testmodus in wanneer u de connectie met MyParcel eerst wilt testen', 'wcmyparcel' ),
 			)
 		);
+		*/
 
 		$log_file_url = dirname(plugin_dir_url(__FILE__)) . '/myparcel_log.txt';
 		$log_file_path = dirname(dirname(__FILE__)) . '/myparcel_log.txt';
@@ -351,6 +427,7 @@ class WC_MyParcel_Settings {
 	public function default_settings() {
 		$default = array(
 			'process'			=> '1',
+			'download_display'	=> 'download',
 			'email'				=> '1',
 			'telefoon'			=> '1',
 			'extragroot'		=> '0',
@@ -385,6 +462,30 @@ class WC_MyParcel_Settings {
 		}
 	
 		$html = sprintf( '<input type="text" id="%1$s" name="%2$s[%1$s]" value="%3$s" size="%4$s"/>', $id, $menu, $current, $size );
+	
+		// Displays option description.
+		if ( isset( $args['description'] ) ) {
+			$html .= sprintf( '<p class="description">%s</p>', $args['description'] );
+		}
+	
+		echo $html;
+	}
+
+	public function textarea_element_callback( $args ) {
+		$menu = $args['menu'];
+		$id = $args['id'];
+		$width = $args['width'];
+		$height = $args['height'];
+	
+		$options = get_option( $menu );
+	
+		if ( isset( $options[$id] ) ) {
+			$current = $options[$id];
+		} else {
+			$current = isset( $args['default'] ) ? $args['default'] : '';
+		}
+	
+		$html = sprintf( '<textarea id="%1$s" name="%2$s[%1$s]" cols="%4$s" rows="%5$s"/>%3$s</textarea>', $id, $menu, $current, $width, $height );
 	
 		// Displays option description.
 		if ( isset( $args['description'] ) ) {
@@ -461,6 +562,37 @@ class WC_MyParcel_Settings {
 		echo $html;
 	}
 	
+	/**
+	 * Displays a radio settings field
+	 *
+	 * @param array   $args settings field args
+	 */
+	public function radio_element_callback( $args ) {
+		$menu = $args['menu'];
+		$id = $args['id'];
+	
+		$options = get_option( $menu );
+	
+		if ( isset( $options[$id] ) ) {
+			$current = $options[$id];
+		} else {
+			$current = isset( $args['default'] ) ? $args['default'] : '';
+		}
+
+		$html = '';
+		foreach ( $args['options'] as $key => $label ) {
+			$html .= sprintf( '<input type="radio" class="radio" id="%1$s[%2$s][%3$s]" name="%1$s[%2$s]" value="%3$s"%4$s />', $menu, $id, $key, checked( $current, $key, false ) );
+			$html .= sprintf( '<label for="%1$s[%2$s][%3$s]"> %4$s</label><br>', $menu, $id, $key, $label);
+		}
+		
+		// Displays option description.
+		if ( isset( $args['description'] ) ) {
+			$html .= sprintf( '<p class="description">%s</p>', $args['description'] );
+		}
+
+		echo $html;
+	}
+
 	/**
 	 * Section null fallback.
 	 *
