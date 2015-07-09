@@ -15,7 +15,6 @@ jQuery(document).ready(function($) {
 		$('#shipping_street_name_field').hide();
 		$('#shipping_house_number_field').hide();
 		$('#shipping_house_number_suffix_field').hide();
-
 	}
 	
 
@@ -69,6 +68,14 @@ jQuery(document).ready(function($) {
 			$streetfield.hide();
 			$numberfield.hide();
 			$suffixfield.hide();
+
+			// Unmark required fields
+			$streetfield.find('label abbr').remove();
+			$numberfield.find('label abbr').remove();
+
+			// Remove validation required classes
+			$streetfield.removeClass('validate-required');
+			$numberfield.removeClass('validate-required');
 		}
 		
 		if ( typeof locale[country] != 'undefined' ) {
